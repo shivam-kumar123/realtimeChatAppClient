@@ -1,40 +1,25 @@
 import React, { useEffect, useState } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
+import Image from './Image'
 
 function Chat({ socket, username, room }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   const [userCount, setUserCount] = useState(0);
   const [roomCount, setRoomCount] = useState(0)
-
-  const sendMessage = async () => {
-    if (currentMessage !== "") {
-      const messageData = {
-        room: room,
-        author: username,
-        message: currentMessage,
-        time:
-          new Date(Date.now()).getHours() +
-          ":" +
-          new Date(Date.now()).getMinutes(),
-      };
-
-      await socket.emit("send_message", messageData);
-      setMessageList((list) => [...list, messageData]);
-      // if (!messageList.some((message) => message.message === messageData.message)) {
-      //   setMessageList((list) => [...list, messageData]);
-      // }
-      setCurrentMessage("");
-    }
-  };
-
+  // const [file, setFile] = useState()
+  const [yourID, setYourID] = useState()
+  
   useEffect(() => {
+    
     socket.on("user_count", (count) => {
       setUserCount(count);
     });
+
     socket.on("room_count", (count) => {
       setRoomCount(count);
     });
+
     socket.on("receive_message", (data) => {
       setMessageList((list) => {
         // Check if the message is already present in the messageList
@@ -55,14 +40,90 @@ function Chat({ socket, username, room }) {
         }
       });
     });
-  }, [socket]);
-  
 
-  // useEffect(() => {
-  //   socket.on("receive_message", (data) => {
-  //     setMessageList((list) => [...list, data]);
-  //   });
-  // }, [socket]);
+    if (socket.current) {
+      socket.current.on("your_id", id => {
+        setYourID(socket.id);
+      });
+    }
+
+  }, [socket]);
+
+  // const selectFile = (e) =>{
+  //   setCurrentMessage(e.target.files[0].name)
+  //   setFile(e.target.files[0])
+  // }
+
+  const sendMessage = async (e) => {
+    e.preventDefault()
+    // if(file){
+    //   console.log("file: ",file);
+    //   const messageObject = {
+    //     id: yourID,
+    //     room,
+    //     type: "file",
+    //     mimeType: file.type,
+    //     fileName: file.name
+    //   }
+    //   setCurrentMessage("")
+    //   setFile()
+    //   console.log(`socket`,socket);
+    //   // await socket.emit("send_message", messageObject)
+    //   await socket.emit("send_message", messageObject)
+    // }
+    // else{
+      if (currentMessage !== "") {
+        const messageData = {
+          id: yourID,
+          room: room,
+          author: username,
+          message: currentMessage,
+          time:
+            new Date(Date.now()).getHours() +
+            ":" +
+            new Date(Date.now()).getMinutes(),
+        };
+
+        await socket.emit("send_message", messageData);
+        setMessageList((list) => [...list, messageData]);
+        setCurrentMessage("");
+      }
+    // }
+  };
+
+    const renderMessages = (currentMessage, index)=> {
+    console.log(`currentMessage.body = ${currentMessage.body} and socket.id = ${socket.id}`)
+    // if(currentMessage.type === "file"){
+    //   const blob = new Blob([currentMessage.body], {type: currentMessage.type})
+    //   if(currentMessage.id === yourID){
+    //     return(
+    //       <ScrollToBottom
+    //         key={index}
+    //       >
+    //         <Image fileName={currentMessage.fileName} blob={blob}/>
+    //       </ScrollToBottom>
+    //     )
+    //   }
+    // }
+
+    return (
+      <div
+        key={index}
+        className="message"
+        id={username === currentMessage.author ? "you" : "other"}
+      >
+        <div>
+          <div className="message-content">
+            <p>{currentMessage.message}</p>
+          </div>
+          <div className="message-meta">
+            <p id="time">{currentMessage.time}</p>
+            <p id="author">{currentMessage.author}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-window">
@@ -71,38 +132,30 @@ function Chat({ socket, username, room }) {
       </div>
       <div className="chat-body">
         <ScrollToBottom className="message-container">
-          {messageList.map((messageContent, index) => {
-            return (
-              <div
-              key={index}
-                className="message"
-                id={username === messageContent.author ? "you" : "other"}
-              >
-                <div>
-                  <div className="message-content">
-                    <p>{messageContent.message}</p>
-                  </div>
-                  <div className="message-meta">
-                    <p id="time">{messageContent.time}</p>
-                    <p id="author">{messageContent.author}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {messageList.map(renderMessages)}
         </ScrollToBottom>
       </div>
-      <div className="chat-footer">
-        <input
-          type="text"
-          value={currentMessage}
-          placeholder="Hey..."
-          onChange={(event) => {
-            setCurrentMessage(event.target.value);
-          }}
-        />
-        <button onClick={sendMessage}>&#9658;</button>
-      </div>
+      <form onSubmit={sendMessage}>
+        <div className="chat-footer">
+          <input
+            type="text"
+            value={currentMessage}
+            placeholder="Hey..."
+            onChange={(event) => {
+              setCurrentMessage(event.target.value);
+            }}
+          />
+          {/* <input 
+            onChange={selectFile}
+            type='file'
+          /> */}
+          <button 
+            // onClick={sendMessage}
+            >
+            &#9658;
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
